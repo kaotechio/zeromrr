@@ -1,16 +1,17 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "../index";
 import { startup } from "../schema";
+import { getStartupsInputSchema } from "@/lib/schemas";
+import z from "zod";
 
-export type GetStartupsParams = {
-  limit: number;
-  offset: number;
-};
-
-export async function getStartups({ limit, offset }: GetStartupsParams) {
-  const rows = await db
-    .select()
-    .from(startup)
+export async function getStartups({ limit, offset, userId }: z.infer<typeof getStartupsInputSchema>) {
+  const baseQuery = db.select().from(startup);
+  
+  const query = userId 
+    ? baseQuery.where(eq(startup.userId, userId))
+    : baseQuery;
+  
+  const rows = await query
     .orderBy(desc(startup.createdAt), desc(startup.id))
     .limit(limit + 1)
     .offset(offset);

@@ -19,6 +19,7 @@ export const createStartupClientSchema = z.object({
 export const getStartupsInputSchema = z.object({
   limit: z.number().int().positive(),
   offset: z.number().int().nonnegative(),
+  userId: z.string().optional(),
 });
 
 export const createStartupInputSchema = z.object({

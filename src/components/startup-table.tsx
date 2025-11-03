@@ -46,76 +46,38 @@ function FaviconImage({ src, alt, className }: { src: string; alt: string; class
   );
 }
 
-const columns: ColumnDef<typeof startup.$inferSelect>[] = [
-  {
-    header: "Startup",
-    accessorKey: "startupName",
-    cell: ({ row }) => {
-      const s = row.original;
-      return (
-        <a href={s.startupLink} target="_blank" rel="noopener" title={`Visit ${s.startupName}`} className="flex items-center gap-3">
-          <FaviconImage
-            src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(new URL(s.startupLink).hostname)}&sz=64`}
-            alt={s.startupName}
-            className="rounded-md object-cover"
-          />
-          <span className="font-medium">{s.startupName}</span>
-        </a>
-      );
-    },
-  },
-  {
-    header: "Founder",
-    accessorKey: "founderName",
-    cell: ({ row }) => {
-      const s = row.original;
-      return (
-        <div className="flex items-center gap-1">
-          <span>{s.founderName}</span>
-          <a
-            href={`https://x.com/${s.founderXUsername}`}
-            target="_blank"
-            rel="noopener"
-            title={`Follow ${s.founderName} on X`}
-            className="text-sky-700 hover:text-sky-800 underline underline-offset-2"
-          >
-            @{s.founderXUsername}
-          </a>
-        </div>
-      );
-    },
-  },
-  {
-    header: "Tags",
-    id: "tags",
-    cell: ({ row }) => {
-      const tags = row.original.tags ?? [];
-      return (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {tags.length === 0 ? (
-            <span className="text-gray-400">—</span>
-          ) : (
-            tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center rounded-full bg-sky-100 text-sky-800 px-2 py-0.5 text-xs font-medium"
-              >
-                {tag}
-              </span>
-            ))
-          )}
-        </div>
-      );
-    },
-  },
-  {
-    header: "MRR",
-    id: "mrr",
-    cell: () => <span className="text-gray-600">≥ 0$</span>,
-  },
-];
+function FilterBadge({ founderName, onClear }: { founderName: string; onClear: () => void }) {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onClear();
+      }}
+      className="cursor-pointer inline-flex items-center gap-1 rounded-full bg-sky-100 text-sky-800 px-2 py-0.5 text-xs font-medium hover:bg-sky-200 transition-colors"
+      title="Clear filter"
+    >
+      <span>{founderName}</span>
+      <span className="text-sky-600 hover:text-sky-800">×</span>
+    </button>
+  );
+}
+
+type StartupQueryData = {
+  items: typeof startup.$inferSelect[];
+  nextOffset: number;
+  hasMore: boolean;
+};
+
+type InfiniteStartupData = {
+  pages: StartupQueryData[];
+  pageParams: Array<{ offset: number; limit: number; userId?: string }>;
+};
 
 export function StartupTable() {
+  const [filteredUserId, setFilteredUserId] = React.useState<string | undefined>(undefined);
+  const [filteredFounderName, setFilteredFounderName] = React.useState<string | undefined>(undefined);
+  const previousDataRef = React.useRef<InfiniteStartupData | undefined>(undefined);
+
   const {
     data,
     fetchNextPage,
@@ -124,9 +86,9 @@ export function StartupTable() {
     refetch,
     isRefetching,
     isLoading,
-  } = useInfiniteQuery({
-    queryKey: ["startups"],
-    initialPageParam: { offset: 0, limit: 30 },
+  } = useInfiniteQuery<StartupQueryData, Error, InfiniteStartupData, (string | undefined)[], { offset: number; limit: number; userId?: string }>({
+    queryKey: ["startups", filteredUserId],
+    initialPageParam: { offset: 0, limit: 30, userId: filteredUserId },
     queryFn: async ({ pageParam }) => {
       const result = await getStartupsAction(pageParam);
       if (result?.data) {
@@ -138,14 +100,122 @@ export function StartupTable() {
       throw new Error(result?.serverError ?? "Failed to fetch startups");
     },
     getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? { offset: lastPage.nextOffset, limit: 30 } : undefined,
+      lastPage.hasMore ? { offset: lastPage.nextOffset, limit: 30, userId: filteredUserId } : undefined,
+    placeholderData: (previousData): InfiniteStartupData | undefined => {
+      if (previousData) {
+        previousDataRef.current = previousData;
+        return previousData;
+      }
+      return previousDataRef.current;
+    },
   });
+
+  React.useEffect(() => {
+    if (data) {
+      previousDataRef.current = data;
+    }
+  }, [data]);
 
   const items = React.useMemo(
     () => (data ? data.pages.flatMap((p) => p.items) : ([] as typeof startup.$inferSelect[])),
     [data],
   );
 
+  const columns: ColumnDef<typeof startup.$inferSelect>[] = React.useMemo(
+    () => [
+      {
+        header: "Startup",
+        accessorKey: "startupName",
+        cell: ({ row }) => {
+          const s = row.original;
+          return (
+            <a href={s.startupLink} target="_blank" rel="noopener" title={`Visit ${s.startupName}`} className="flex items-center gap-3">
+              <FaviconImage
+                src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(new URL(s.startupLink).hostname)}&sz=64`}
+                alt={s.startupName}
+                className="rounded-md object-cover"
+              />
+              <span className="font-medium">{s.startupName}</span>
+            </a>
+          );
+        },
+      },
+      {
+        header: () => (
+          <div className="flex items-center gap-2">
+            <span>Founder</span>
+            {filteredFounderName && (
+              <FilterBadge
+                founderName={filteredFounderName}
+                onClear={() => {
+                  setFilteredUserId(undefined);
+                  setFilteredFounderName(undefined);
+                }}
+              />
+            )}
+          </div>
+        ),
+        accessorKey: "founderName",
+        cell: ({ row }) => {
+          const s = row.original;
+          return (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setFilteredUserId(s.userId);
+                  setFilteredFounderName(s.founderName);
+                }}
+                title={`Filter by ${s.founderName}`}
+                className="font-bold hover:text-sky-700 hover:underline underline-offset-2 cursor-pointer"
+              >
+                {s.founderName}
+              </button>
+              <a
+                href={`https://x.com/${s.founderXUsername}`}
+                target="_blank"
+                rel="noopener"
+                title={`Follow ${s.founderName} on X`}
+                className="text-sky-700 hover:text-sky-800 underline underline-offset-2"
+              >
+                @{s.founderXUsername}
+              </a>
+            </div>
+          );
+        },
+      },
+      {
+        header: "Tags",
+        id: "tags",
+        cell: ({ row }) => {
+          const tags = row.original.tags ?? [];
+          return (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {tags.length === 0 ? (
+                <span className="text-gray-400">—</span>
+              ) : (
+                tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center rounded-full bg-sky-100 text-sky-800 px-2 py-0.5 text-xs font-medium"
+                  >
+                    {tag}
+                  </span>
+                ))
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        header: "MRR",
+        id: "mrr",
+        cell: () => <span className="text-gray-600">≥ 0$</span>,
+      },
+    ],
+    [filteredFounderName],
+  );
 
   const table = useReactTable({
     data: items,
