@@ -215,7 +215,7 @@ export default function AddStartupDialog({ startup: startupData, trigger, open: 
                 const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
                 return (
                   <Field data-invalid={isInvalid}>
-                    <FieldLabel htmlFor={field.name}>Founder X username</FieldLabel>
+                    <FieldLabel htmlFor={field.name}>Founder X username (optional)</FieldLabel>
                     <Input
                       id={field.name}
                       name={field.name}
@@ -224,7 +224,6 @@ export default function AddStartupDialog({ startup: startupData, trigger, open: 
                       onChange={(e) => field.handleChange(e.target.value)}
                       aria-invalid={isInvalid}
                       placeholder="kaotechio"
-                      required
                     />
                     {isInvalid && <FieldError errors={field.state.meta.errors} />}
                   </Field>

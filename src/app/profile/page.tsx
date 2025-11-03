@@ -7,6 +7,7 @@ import Icon from "@/components/icon";
 import Header from "@/components/header";
 import AddStartupDialog from "@/components/add-startup-dialog";
 import StartupListItem from "@/components/startup-list-item";
+import DeleteAccountDialog from "@/components/delete-account-dialog";
 import { Button } from "@/components/ui/button";
 import { ShareIcon } from "lucide-react";
 import InfoMenu from "@/components/info-menu";
@@ -56,6 +57,11 @@ export default async function Profile() {
                 ))}
               </ul>
             )}
+
+            <div className="mt-8 pt-6 border-t border-slate-200">
+              <h3 className="text-lg font-semibold text-sky-900 mb-4">Account Settings</h3>
+              <DeleteAccountDialog />
+            </div>
           </div>
         </div>
       </main>

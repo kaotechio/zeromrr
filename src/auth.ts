@@ -10,6 +10,11 @@ export const auth = betterAuth({
     provider: "pg",
     schema: schema
   }),
+  user: {
+    deleteUser: { 
+      enabled: true
+    },
+  },
   plugins: [
     magicLink({
       sendMagicLink: async ({ email, token, url }) => {

@@ -4,7 +4,7 @@ export const createStartupFieldValidators = {
   startupName: z.string().min(1, "Startup name is required"),
   startupLink: z.url("Invalid URL format"),
   founderName: z.string().min(1, "Founder name is required"),
-  founderXUsername: z.string().min(1, "Founder X username is required"),
+  founderXUsername: z.string(),
   tags: z.string(),
 };
 
@@ -26,7 +26,7 @@ export const createStartupInputSchema = z.object({
   startupName: z.string().min(1, "Startup name is required"),
   startupLink: z.string().url("Invalid URL format"),
   founderName: z.string().min(1, "Founder name is required"),
-  founderXUsername: z.string().min(1, "Founder X username is required"),
+  founderXUsername: z.string().default(""),
   tags: z.string().optional().transform((val) => {
     if (!val) return [];
     return val
@@ -41,7 +41,7 @@ export const updateStartupInputSchema = z.object({
   startupName: z.string().min(1, "Startup name is required"),
   startupLink: z.url("Invalid URL format"),
   founderName: z.string().min(1, "Founder name is required"),
-  founderXUsername: z.string().min(1, "Founder X username is required"),
+  founderXUsername: z.string().default(""),
   tags: z.string().optional().transform((val) => {
     if (!val) return [];
     return val
