@@ -19,7 +19,7 @@ export async function getStartups({ limit, offset }: GetStartupsParams) {
   const items = hasMore ? rows.slice(0, limit) : rows;
 
   return {
-    items: [...items, ...items, ...items, ...items, ...items, ...items, ...items, ...items, ...items, ...items, ...items, ...items, ...items, ...items],
+    items,
     nextOffset: offset + items.length,
     hasMore,
   } as const;
