@@ -12,10 +12,12 @@ export const auth = betterAuth({
   }),
   plugins: [
     magicLink({
-      sendMagicLink: async ({ email, token }) => {
+      sendMagicLink: async ({ email, token, url }) => {
         //TODO:
+        console.log(`Sending magic link to ${email} with token ${token} and url ${url}`);
       },
       storeToken: "hashed",
     })
-  ]
+  ],
+  trustedOrigins: ["http://localhost:3000"]
 });

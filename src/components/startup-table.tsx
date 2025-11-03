@@ -7,29 +7,46 @@ import {
   useReactTable,
   flexRender,
 } from "@tanstack/react-table";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
+import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import { startup } from "../db/schema";
+import { getStartupsAction } from "../action/startups";
 
-type Startup = {
-  id: string;
-  startupName: string;
-  startupLink: string;
-  founderXUsername: string;
-  founderName: string;
-  tags: string[];
-};
+function FaviconImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [imgSrc, setImgSrc] = React.useState(src);
+  const [hasError, setHasError] = React.useState(false);
 
-const mockData: Startup[] = [
-  {
-    id: "1",
-    startupName: "EasePop",
-    startupLink: "https://easepop.dev",
-    founderXUsername: "kaotechio",
-    founderName: "Paul",
-    tags: ["Marketing", "SaaS", "Popups"],
+  React.useEffect(() => {
+    setImgSrc(src);
+    setHasError(false);
+  }, [src]);
+
+  if (hasError) {
+    return (
+      <div
+        className={`${className} flex items-center justify-center bg-sky-100 text-sky-700 font-semibold text-xs`}
+        style={{ width: 32, height: 32 }}
+      >
+        {alt.charAt(0).toUpperCase()}
+      </div>
+    );
   }
-];
 
-const columns: ColumnDef<Startup>[] = [
+  return (
+    <Image
+      width={32}
+      height={32}
+      src={imgSrc}
+      alt={alt}
+      className={className}
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
+const columns: ColumnDef<typeof startup.$inferSelect>[] = [
   {
     header: "Startup",
     accessorKey: "startupName",
@@ -37,9 +54,7 @@ const columns: ColumnDef<Startup>[] = [
       const s = row.original;
       return (
         <a href={s.startupLink} target="_blank" rel="noopener" title={`Visit ${s.startupName}`} className="flex items-center gap-3">
-          <Image
-            width={32}
-            height={32}
+          <FaviconImage
             src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(new URL(s.startupLink).hostname)}&sz=64`}
             alt={s.startupName}
             className="rounded-md object-cover"
@@ -101,18 +116,62 @@ const columns: ColumnDef<Startup>[] = [
 ];
 
 export function StartupTable() {
-  const [data] = React.useState<Startup[]>(mockData);
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch,
+    isRefetching,
+  } = useInfiniteQuery({
+    queryKey: ["startups"],
+    initialPageParam: { offset: 0, limit: 30 },
+    queryFn: async ({ pageParam }) => {
+      const result = await getStartupsAction(pageParam);
+      if (result?.data) {
+        return result.data;
+      }
+      if (result?.validationErrors) {
+        throw new Error("Validation failed");
+      }
+      throw new Error(result?.serverError ?? "Failed to fetch startups");
+    },
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore ? { offset: lastPage.nextOffset, limit: 30 } : undefined,
+  });
+
+  const items = React.useMemo(
+    () => (data ? data.pages.flatMap((p) => p.items) : ([] as typeof startup.$inferSelect[])),
+    [data],
+  );
+
 
   const table = useReactTable({
-    data,
+    data: items,
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
 
+  const rowVirtualizer = useWindowVirtualizer({
+    count: items.length,
+    estimateSize: () => 56,
+    overscan: 15,
+  });
+
+  React.useEffect(() => {
+    const virtualItems = rowVirtualizer.getVirtualItems();
+    if (!virtualItems.length || isFetchingNextPage || !hasNextPage) return;
+
+    const lastItem = virtualItems[virtualItems.length - 1];
+    if (lastItem.index >= items.length - 1) {
+      fetchNextPage();
+    }
+  }, [rowVirtualizer.getVirtualItems(), isFetchingNextPage, hasNextPage, items.length, fetchNextPage]);
+
   return (
     <div className="w-full shadow-sm rounded-lg border border-sky-200 bg-white">
       <table className="w-full text-sm">
-        <thead className="bg-sky-50 sticky top-12">
+        <thead className="bg-sky-50 sticky top-12 z-10">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
@@ -132,17 +191,59 @@ export function StartupTable() {
           ))}
         </thead>
         <tbody>
-          {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className="border-t border-sky-100 hover:bg-sky-50/60">
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="px-4 py-3">
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
+          {(() => {
+            const virtualRows = rowVirtualizer.getVirtualItems();
+            if (!virtualRows.length) return null;
+            const paddingTop = virtualRows[0].start;
+            const paddingBottom = rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end;
+            return (
+              <>
+                {paddingTop > 0 && (
+                  <tr>
+                    <td colSpan={table.getAllColumns().length} style={{ height: paddingTop }} />
+                  </tr>
+                )}
+                {virtualRows.map((virtualRow) => {
+                  const row = table.getRowModel().rows[virtualRow.index];
+                  return (
+                    <tr key={row.id} className="border-t border-sky-100 hover:bg-sky-50/60">
+                      {row.getVisibleCells().map((cell) => (
+                        <td key={cell.id} className="px-4 py-3 align-top">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+                {paddingBottom > 0 && (
+                  <tr>
+                    <td colSpan={table.getAllColumns().length} style={{ height: paddingBottom }} />
+                  </tr>
+                )}
+              </>
+            );
+          })()}
         </tbody>
       </table>
+      {isFetchingNextPage && (
+        <div className="p-3 border-t border-sky-100 flex items-center justify-center">
+          <span className="text-slate-500 text-sm">Loading more…</span>
+        </div>
+      )}
+      {!hasNextPage && items.length > 0 && (
+        <div className="p-3 border-t border-sky-100 flex items-center justify-center gap-3">
+          <span className="text-slate-500 text-sm">No more results</span>
+          <Button
+            onClick={() => refetch()}
+            disabled={isRefetching}
+            variant="outline"
+            size="sm"
+            className="border-sky-200 cursor-pointer"
+          >
+            {isRefetching ? "Checking…" : "Check again"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

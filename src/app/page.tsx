@@ -2,27 +2,7 @@ import StartupTable from "../components/startup-table";
 import BadgeCard from "../components/badge";
 import { SiGithub } from '@icons-pack/react-simple-icons';
 import Icon from "../components/icon";
-
-function Header() {
-  return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur h-12 flex items-center justify-center">
-      <div className="text-center text-xs text-slate-600 w-full max-w-4xl mx-auto h-full bg-white flex flex-row items-center justify-center">
-        <div>
-          <span>made with 💗 by </span>
-          <a
-            href="https://x.com/kaotechio"
-            target="_blank"
-            rel="noreferrer"
-            title="Follow Paul on X"
-            className="text-sky-700 hover:text-sky-800 underline underline-offset-2"
-          >
-            Paul
-          </a>
-        </div>
-      </div>
-    </header>
-  );
-}
+import Header from "../components/header";
 
 export default function Home() {
   return (
@@ -32,6 +12,9 @@ export default function Home() {
         <div className="w-full max-w-4xl mx-auto bg-white">
           <div className="h-[15vh]" />
           <Icon />
+          <h1 className="mb-2 text-center text-3xl md:text-4xl font-semibold text-sky-900">
+            The database of verified startup revenues — where every MRR is 0 or more.
+          </h1>
           <div className="px-1">
             <p className="mb-6 text-center text-sky-800/70 text-base md:text-lg">
               Build trust by showing your MRR — keep customer data private.
