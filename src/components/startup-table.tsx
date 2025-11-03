@@ -123,6 +123,7 @@ export function StartupTable() {
     isFetchingNextPage,
     refetch,
     isRefetching,
+    isLoading,
   } = useInfiniteQuery({
     queryKey: ["startups"],
     initialPageParam: { offset: 0, limit: 30 },
@@ -169,9 +170,9 @@ export function StartupTable() {
   }, [rowVirtualizer.getVirtualItems(), isFetchingNextPage, hasNextPage, items.length, fetchNextPage]);
 
   return (
-    <div className="w-full shadow-sm rounded-lg border border-sky-200 bg-white">
+    <div className="w-full shadow-sm rounded-lg border border-sky-200 bg-white overflow-x-scroll">
       <table className="w-full text-sm">
-        <thead className="bg-sky-50 sticky top-12 z-10">
+        <thead className="bg-sky-50 sticky top-02 z-10">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
@@ -193,7 +194,15 @@ export function StartupTable() {
         <tbody>
           {(() => {
             const virtualRows = rowVirtualizer.getVirtualItems();
-            if (!virtualRows.length) return null;
+            if (!virtualRows.length) {
+              return (
+                <tr>
+                  <td colSpan={table.getAllColumns().length} className="px-4 py-3 text-center text-slate-500 text-sm">
+                    {isLoading ? "Loading startups..." : "No startups found"}
+                  </td>
+                </tr>
+              );
+            }
             const paddingTop = virtualRows[0].start;
             const paddingBottom = rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end;
             return (
