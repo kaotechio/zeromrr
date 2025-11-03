@@ -5,6 +5,7 @@ import { getStartupsByUserId } from "@/db/queries/startup";
 import Icon from "@/components/icon";
 import Header from "@/components/header";
 import AddStartupDialog from "@/components/add-startup-dialog";
+import StartupListItem from "@/components/startup-list-item";
 
 export default async function Profile() {
   const headersList = await headers();
@@ -21,8 +22,9 @@ export default async function Profile() {
   return (
     <>
       <Header />
-      <main className="min-h-screen px-4 py-16">
-        <div className="w-full max-w-4xl mx-auto bg-white">
+      <main className="min-h-screen px-4 py-16 bg-linear-to-br from-sky-50 via-blue-50 to-indigo-50 relative">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px]"></div>
+        <div className="relative w-full max-w-4xl mx-auto bg-white/80 backdrop-blur-sm rounded-lg shadow-lg border border-slate-200/50 p-6 md:p-8">
           <Icon imageSize={42} textSize={21} />
           <div className="px-1">
             <div className="mb-6 flex items-center justify-between">
@@ -37,51 +39,7 @@ export default async function Profile() {
             ) : (
               <ul className="space-y-4">
                 {startups.map((startup) => (
-                  <li
-                    key={startup.id}
-                    className="p-4 border border-sky-200 rounded-lg bg-sky-50/50 hover:bg-sky-50 transition-colors duration-200"
-                  >
-                    <div className="flex flex-col gap-2">
-                      <a
-                        href={startup.startupLink}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="text-lg font-semibold text-sky-900 hover:text-sky-800 underline underline-offset-2"
-                      >
-                        {startup.startupName}
-                      </a>
-                      <div className="text-sm text-slate-600">
-                        <span className="font-medium">Founder:</span> {startup.founderName}
-                        {startup.founderXUsername && (
-                          <>
-                            {" "}
-                            (
-                            <a
-                              href={`https://x.com/${startup.founderXUsername}`}
-                              target="_blank"
-                              rel="noreferrer noopener"
-                              className="text-sky-700 hover:text-sky-800 underline underline-offset-2"
-                            >
-                              @{startup.founderXUsername}
-                            </a>
-                            )
-                          </>
-                        )}
-                      </div>
-                      {startup.tags && startup.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {startup.tags.map((tag, index) => (
-                            <span
-                              key={index}
-                              className="px-2 py-1 text-xs font-medium bg-sky-100 text-sky-800 rounded-md"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </li>
+                  <StartupListItem key={startup.id} startupItem={startup} />
                 ))}
               </ul>
             )}

@@ -7,14 +7,25 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { createStartupAction } from "@/action/startups";
+import { createStartupAction, updateStartupAction, deleteStartupAction } from "@/action/startups";
 import { createStartupClientSchema, createStartupFieldValidators } from "@/lib/schemas";
 import { useAction } from "next-safe-action/hooks";
+import { startup } from "@/db/schema";
 
-export default function AddStartupDialog() {
-  const [open, setOpen] = useState(false);
+type StartupDialogProps = {
+  startup?: typeof startup.$inferSelect;
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
 
-  const { execute, status } = useAction(createStartupAction, {
+export default function AddStartupDialog({ startup: startupData, trigger, open: controlledOpen, onOpenChange }: StartupDialogProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isEditMode = !!startupData;
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
+
+  const { execute: executeCreate, status: createStatus } = useAction(createStartupAction, {
     onSuccess: () => {
       toast.success("Startup added");
       form.reset();
@@ -27,38 +38,82 @@ export default function AddStartupDialog() {
     },
   });
 
+  const { execute: executeUpdate, status: updateStatus } = useAction(updateStartupAction, {
+    onSuccess: () => {
+      toast.success("Startup updated");
+      form.reset();
+      setOpen(false);
+    },
+    onError: ({ error }) => {
+      if (!error.validationErrors && error.serverError) {
+        toast.error(error.serverError);
+      }
+    },
+  });
+
+  const { execute: executeDelete, status: deleteStatus } = useAction(deleteStartupAction, {
+    onSuccess: () => {
+      toast.success("Startup deleted");
+      setOpen(false);
+    },
+    onError: ({ error }) => {
+      if (!error.validationErrors && error.serverError) {
+        toast.error(error.serverError);
+      }
+    },
+  });
+
+  const status = isEditMode ? updateStatus : createStatus;
+
   const form = useForm({
     defaultValues: {
-      startupName: "",
-      startupLink: "",
-      founderName: "",
-      founderXUsername: "",
-      tags: "",
+      startupName: startupData?.startupName || "",
+      startupLink: startupData?.startupLink || "",
+      founderName: startupData?.founderName || "",
+      founderXUsername: startupData?.founderXUsername || "",
+      tags: startupData?.tags?.join(", ") || "",
     },
     validators: {
       onSubmit: createStartupClientSchema,
     },
     onSubmit: async ({ value }) => {
-      execute(value);
+      if (isEditMode && startupData) {
+        executeUpdate({
+          id: startupData.id,
+          ...value,
+        });
+      } else {
+        executeCreate(value);
+      }
     },
   });
 
   useEffect(() => {
-    if (!open) {
+    if (startupData && open) {
+      form.setFieldValue("startupName", startupData.startupName);
+      form.setFieldValue("startupLink", startupData.startupLink);
+      form.setFieldValue("founderName", startupData.founderName);
+      form.setFieldValue("founderXUsername", startupData.founderXUsername || "");
+      form.setFieldValue("tags", startupData.tags?.join(", ") || "");
+    } else if (!open) {
       form.reset();
     }
-  }, [open, form]);
+  }, [open, form, startupData]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="border-sky-200 text-sky-700 hover:text-sky-800 hover:bg-sky-50 cursor-pointer">
-          Add startup
-        </Button>
-      </DialogTrigger>
+      {trigger ? (
+        <DialogTrigger asChild>{trigger}</DialogTrigger>
+      ) : !isEditMode ? (
+        <DialogTrigger asChild>
+          <Button variant="outline" className="border-sky-200 text-sky-700 hover:text-sky-800 hover:bg-sky-50 cursor-pointer">
+            Add startup
+          </Button>
+        </DialogTrigger>
+      ) : null}
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add a new startup</DialogTitle>
+          <DialogTitle>{isEditMode ? "Edit startup" : "Add a new startup"}</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={(e) => {
@@ -200,9 +255,23 @@ export default function AddStartupDialog() {
             />
 
             <Field orientation="horizontal">
-              <Button type="submit" disabled={status === "executing"}>
+              <Button type="submit" disabled={status === "executing" || deleteStatus === "executing"}>
                 {status === "executing" ? "Saving..." : "Save"}
               </Button>
+              {isEditMode && startupData && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={status === "executing" || deleteStatus === "executing"}
+                  onClick={() => {
+                    if (confirm("Are you sure you want to delete this startup? This action cannot be undone.")) {
+                      executeDelete({ id: startupData.id });
+                    }
+                  }}
+                >
+                  {deleteStatus === "executing" ? "Deleting..." : "Delete"}
+                </Button>
+              )}
             </Field>
           </FieldGroup>
         </form>

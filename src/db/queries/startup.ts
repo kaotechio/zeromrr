@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "../index";
 import { startup } from "../schema";
 
@@ -19,7 +19,7 @@ export async function getStartups({ limit, offset }: GetStartupsParams) {
   const items = hasMore ? rows.slice(0, limit) : rows;
 
   return {
-    items,
+    items: [...items, ...items, ...items, ...items, ...items, ...items, ...items, ...items, ...items, ...items, ...items, ...items, ...items, ...items],
     nextOffset: offset + items.length,
     hasMore,
   } as const;
@@ -50,5 +50,30 @@ export async function createStartup(params: typeof startup.$inferInsert) {
     .returning();
 
   return row;
+}
+
+export async function updateStartup(params: typeof startup.$inferInsert) {
+  const rows = await db
+    .update(startup)
+    .set({
+      startupName: params.startupName,
+      startupLink: params.startupLink,
+      founderName: params.founderName,
+      founderXUsername: params.founderXUsername,
+      tags: params.tags,
+    })
+    .where(and(eq(startup.id, params.id), eq(startup.userId, params.userId)))
+    .returning();
+
+  return rows.length > 0 ? rows[0] : null;
+}
+
+export async function deleteStartup(startupId: string, userId: string) {
+  const rows = await db
+    .delete(startup)
+    .where(and(eq(startup.id, startupId), eq(startup.userId, userId)))
+    .returning();
+
+  return rows.length > 0 ? rows[0] : null;
 }
 

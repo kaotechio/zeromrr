@@ -8,9 +8,10 @@ export default function Home() {
   return (
     <>
       <Header />
-      <main className="min-h-screen px-4 py-16">
-        <div className="w-full max-w-4xl mx-auto bg-white">
-          <div className="h-[15vh]" />
+      <main className="min-h-screen px-4 py-16 bg-linear-to-br from-sky-50 via-blue-50 to-indigo-50 relative">
+        <div className="h-[15vh]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px]"></div>
+        <div className="relative w-full max-w-4xl mx-auto bg-white/80 backdrop-blur-sm rounded-lg shadow-lg border border-slate-200/50 p-6 md:p-8">
           <Icon />
           <h1 className="mb-2 text-center text-3xl md:text-4xl font-semibold text-sky-900">
             The database of verified startup revenues — where every MRR is 0 or more.
