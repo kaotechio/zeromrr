@@ -3,12 +3,14 @@ import BadgeCard from "../components/badge";
 import { SiGithub } from '@icons-pack/react-simple-icons';
 import Icon from "../components/icon";
 import Header from "../components/header";
+import InfoMenu from "../components/info-menu";
 
 export default function Home() {
   return (
     <>
       <Header />
       <main className="min-h-screen px-4 py-16 bg-linear-to-br from-sky-50 via-blue-50 to-indigo-50 relative">
+        <InfoMenu />
         <div className="h-[25vh]" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px]"></div>
         <div className="relative w-full max-w-4xl mx-auto bg-white/80 backdrop-blur-sm rounded-lg shadow-lg border border-slate-200/50 p-6 md:p-8">

@@ -12,16 +12,16 @@ export default function AuthButton() {
   const pathname = usePathname();
   const router = useRouter();
   if (session?.user) {
-    const onProfile = pathname === "/profile";
+    const onHome = pathname === "/";
     return (
       <div className="flex items-center gap-2">
         <Link
-          href={onProfile ? "/" : "/profile"}
+          href={onHome ? "/profile" : "/"}
           className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-sky-700 hover:text-sky-800 border border-sky-200 rounded-md hover:bg-sky-50 transition-colors duration-200"
-          title={onProfile ? "Home" : "My Profile"}
+          title={onHome ? "My Profile" : "Home"}
         >
-          { onProfile ? <HomeIcon className="size-4" /> : <UserIcon className="size-4" /> }
-          {onProfile ? "Home" : "My Profile"}
+          { onHome ? <UserIcon className="size-4" /> : <HomeIcon className="size-4" /> }
+          { onHome ? "My Profile" : "Home" }
         </Link>
         <Button
           variant="outline"

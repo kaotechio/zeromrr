@@ -11,6 +11,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import { useSearchParams, useRouter } from "next/navigation";
 import { startup } from "../db/schema";
 import { getStartupsAction } from "../action/startups";
 
@@ -74,9 +75,31 @@ type InfiniteStartupData = {
 };
 
 export function StartupTable() {
-  const [filteredUserId, setFilteredUserId] = React.useState<string | undefined>(undefined);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  // Get userId from URL - use useMemo to avoid unnecessary recalculations
+  const userIdFromUrl = React.useMemo(() => searchParams.get("userId") ?? undefined, [searchParams.get("userId")]);
+  const [filteredUserId, setFilteredUserId] = React.useState<string | undefined>(userIdFromUrl);
   const [filteredFounderName, setFilteredFounderName] = React.useState<string | undefined>(undefined);
   const previousDataRef = React.useRef<InfiniteStartupData | undefined>(undefined);
+  const isUpdatingFromUrlRef = React.useRef(false);
+
+  // Sync state when URL changes (e.g., browser back/forward) - but only if not updating from user action
+  React.useEffect(() => {
+    if (isUpdatingFromUrlRef.current) {
+      isUpdatingFromUrlRef.current = false;
+      return;
+    }
+    // Only update if the URL value actually differs from current state
+    if (userIdFromUrl !== filteredUserId) {
+      setFilteredUserId(userIdFromUrl);
+      if (!userIdFromUrl) {
+        setFilteredFounderName(undefined);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userIdFromUrl]);
 
   const {
     data,
@@ -115,6 +138,46 @@ export function StartupTable() {
       previousDataRef.current = data;
     }
   }, [data]);
+
+  // Update URL when filter changes from user action (not on initial mount or URL sync)
+  const isInitialMount = React.useRef(true);
+  const prevFilteredUserIdRef = React.useRef(filteredUserId);
+  React.useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      prevFilteredUserIdRef.current = filteredUserId;
+      return;
+    }
+    // Skip if this change came from URL sync
+    if (isUpdatingFromUrlRef.current) {
+      prevFilteredUserIdRef.current = filteredUserId;
+      return;
+    }
+    // Only update if the filter actually changed
+    if (prevFilteredUserIdRef.current === filteredUserId) {
+      return;
+    }
+    prevFilteredUserIdRef.current = filteredUserId;
+    
+    // Mark that we're updating from user action to prevent URL sync effect from running
+    isUpdatingFromUrlRef.current = true;
+    const params = new URLSearchParams();
+    if (filteredUserId) {
+      params.set("userId", filteredUserId);
+    }
+    const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
+    router.replace(newUrl, { scroll: false });
+  }, [filteredUserId, router]);
+
+  // Extract founder name from loaded data when we have userId from URL
+  React.useEffect(() => {
+    if (filteredUserId && !filteredFounderName && data) {
+      const firstItem = data.pages[0]?.items[0];
+      if (firstItem && firstItem.userId === filteredUserId) {
+        setFilteredFounderName(firstItem.founderName);
+      }
+    }
+  }, [filteredUserId, filteredFounderName, data]);
 
   const items = React.useMemo(
     () => (data ? data.pages.flatMap((p) => p.items) : ([] as typeof startup.$inferSelect[])),
@@ -287,7 +350,7 @@ export function StartupTable() {
                   return (
                     <tr key={row.id} className="border-t border-sky-100 hover:bg-sky-50/60">
                       {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className="px-4 py-3 align-top">
+                        <td key={cell.id} className="px-4 py-3">
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
                       ))}

@@ -1,11 +1,15 @@
 import { headers } from "next/headers";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getStartupsByUserId } from "@/db/queries/startup";
 import Icon from "@/components/icon";
 import Header from "@/components/header";
 import AddStartupDialog from "@/components/add-startup-dialog";
 import StartupListItem from "@/components/startup-list-item";
+import { Button } from "@/components/ui/button";
+import { ShareIcon } from "lucide-react";
+import InfoMenu from "@/components/info-menu";
 
 export default async function Profile() {
   const headersList = await headers();
@@ -23,13 +27,22 @@ export default async function Profile() {
     <>
       <Header />
       <main className="min-h-screen px-4 py-16 bg-linear-to-br from-sky-50 via-blue-50 to-indigo-50 relative">
+        <InfoMenu />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px]"></div>
         <div className="relative w-full max-w-4xl mx-auto bg-white/80 backdrop-blur-sm rounded-lg shadow-lg border border-slate-200/50 p-6 md:p-8">
           <Icon imageSize={42} textSize={21} />
           <div className="px-1">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-xl md:text-2xl font-semibold text-sky-900">Your Startups</h2>
-              <AddStartupDialog />
+              <div className="flex items-center gap-2">
+                <Button asChild variant="outline" size="sm" className="border-sky-200">
+                  <Link href={`/?userId=${session.user.id}`} title="Share profile">
+                    <ShareIcon className="size-4" />
+                    Share Profile
+                  </Link>
+                </Button>
+                <AddStartupDialog />
+              </div>
             </div>
 
             {startups.length === 0 ? (
