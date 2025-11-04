@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../index";
 import { startup } from "../schema";
 import { getStartupsInputSchema } from "@/lib/schemas";
@@ -12,7 +12,7 @@ export async function getStartups({ limit, offset, userId }: z.infer<typeof getS
     : baseQuery;
   
   const rows = await query
-    .orderBy(desc(startup.createdAt), desc(startup.id))
+    .orderBy(sql`RANDOM()`)
     .limit(limit + 1)
     .offset(offset);
 

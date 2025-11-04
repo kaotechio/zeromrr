@@ -62,7 +62,12 @@ export const getStartupsInputSchema = z.object({
 export const createStartupInputSchema = z.object({
   startupName: z.string().min(1, "Startup name is required"),
   startupLink: z
-    .url("Invalid URL format")
+    .string()
+    .transform((val) => {
+      const trimmed = val.trim();
+      const withoutProtocol = trimmed.replace(/^https?:\/\//i, "");
+      return `https://${withoutProtocol}`;
+    })
     .refine((v) => {
       try {
         const u = new URL(v);
@@ -86,7 +91,12 @@ export const updateStartupInputSchema = z.object({
   id: z.string().min(1, "Startup ID is required"),
   startupName: z.string().min(1, "Startup name is required"),
   startupLink: z
-    .url("Invalid URL format")
+    .string()
+    .transform((val) => {
+      const trimmed = val.trim();
+      const withoutProtocol = trimmed.replace(/^https?:\/\//i, "");
+      return `https://${withoutProtocol}`;
+    })
     .refine((v) => {
       try {
         const u = new URL(v);

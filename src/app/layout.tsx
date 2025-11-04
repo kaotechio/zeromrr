@@ -6,6 +6,30 @@ import { Toaster } from "@/components/ui/sonner";
 export const metadata: Metadata = {
   title: "ZeroMRR",
   description: "A privacy-first database of verified startup revenues",
+  metadataBase: new URL("https://zeromrr.app"),
+  openGraph: {
+    title: "ZeroMRR",
+    description: "A privacy-first database of verified startup revenues",
+    url: "https://zeromrr.app",
+    siteName: "ZeroMRR",
+    images: [
+      {
+        url: "/zeromrr-homepage.png",
+        width: 1200,
+        height: 630,
+        alt: "ZeroMRR homepage"
+      }
+    ],
+    type: "website",
+    locale: "en_US"
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ZeroMRR",
+    description: "A privacy-first database of verified startup revenues",
+    images: ["/zeromrr-homepage.png"],
+    creator: "@kaotechio"
+  }
 };
 
 export default function RootLayout({
