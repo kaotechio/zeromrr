@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { startup } from "@/db/schema";
 import AddStartupDialog from "@/components/add-startup-dialog";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { CodeIcon, CopyIcon, PencilIcon } from "lucide-react";
 
 export default function StartupListItem({ startupItem }: { startupItem: typeof startup.$inferSelect }) {
   const [open, setOpen] = useState(false);
-
+  
   return (
     <li className="p-4 border border-sky-200 rounded-lg bg-sky-50/50 hover:bg-sky-50 transition-colors duration-200">
       <div className="flex flex-col gap-2">
@@ -21,14 +23,18 @@ export default function StartupListItem({ startupItem }: { startupItem: typeof s
             {startupItem.startupName}
           </a>
           <>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-sky-200 text-sky-700 hover:text-sky-800 hover:bg-sky-50 cursor-pointer shrink-0"
-              onClick={() => setOpen(true)}
-            >
-              Edit
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-sky-200 text-sky-700 hover:text-sky-800 hover:bg-sky-50 cursor-pointer shrink-0"
+                onClick={() => setOpen(true)}
+              >
+                <PencilIcon className="size-4" />
+                Edit
+              </Button>
+              <GetEmbedDialogButton startupId={startupItem.id} />
+            </div>
             <AddStartupDialog
               startup={startupItem}
               open={open}
@@ -67,7 +73,72 @@ export default function StartupListItem({ startupItem }: { startupItem: typeof s
           </div>
         )}
       </div>
-    </li>
+   </li>
   );
 }
 
+function GetEmbedDialogButton({ startupId }: { startupId: string }) {
+  const [copiedHtml, setCopiedHtml] = useState(false);
+
+  const badgeUrl = useMemo(() => `/api/badge/${startupId}.svg`, [startupId]);
+  const absolute = typeof window !== 'undefined' ? location.origin : '';
+  const htmlEmbed = `<a href="https://zeromrr.app" target="_blank">
+  <img
+    src="${absolute}${badgeUrl}"
+    alt="Verified on ZeroMRR • MRR ≥ $0"
+  />
+</a>`;
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-sky-200 text-sky-700 hover:text-sky-800 hover:bg-sky-50 cursor-pointer shrink-0"
+        >
+          <CodeIcon className="size-4" />
+          Get Embed
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Embed badge</DialogTitle>
+          <DialogDescription>
+            Add this badge to your website to show you’re verified with MRR ≥ $0.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-center rounded-md border bg-white p-4">
+            <img src={badgeUrl} alt="ZeroMRR badge preview" className="max-w-full h-16" />
+          </div>
+
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-slate-700">HTML</label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="cursor-pointer"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(htmlEmbed);
+                  setCopiedHtml(true);
+                  setTimeout(() => setCopiedHtml(false), 1500);
+                }}
+              >
+                <CopyIcon className="size-4" />
+                {copiedHtml ? "Copied" : "Copy"}
+              </Button>
+            </div>
+            <pre
+              className="bg-sky-50 border border-sky-200 rounded-md px-3 py-2 w-full text-sky-800 font-mono text-sm whitespace-pre-wrap wrap-break-word"
+              aria-label="embed code"
+            ><code>{htmlEmbed}</code></pre>
+          </div>
+        </div>
+        <DialogFooter />
+      </DialogContent>
+    </Dialog>
+  );
+}
