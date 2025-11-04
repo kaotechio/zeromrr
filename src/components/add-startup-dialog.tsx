@@ -68,7 +68,7 @@ export default function AddStartupDialog({ startup: startupData, trigger, open: 
   const form = useForm({
     defaultValues: {
       startupName: startupData?.startupName || "",
-      startupLink: startupData?.startupLink || "",
+      startupLink: startupData?.startupLink ? startupData.startupLink.replace(/^https?:\/\//i, "") : "",
       founderName: startupData?.founderName || "",
       founderXUsername: startupData?.founderXUsername || "",
       tags: startupData?.tags?.join(", ") || "",
@@ -91,7 +91,7 @@ export default function AddStartupDialog({ startup: startupData, trigger, open: 
   useEffect(() => {
     if (startupData && open) {
       form.setFieldValue("startupName", startupData.startupName);
-      form.setFieldValue("startupLink", startupData.startupLink);
+      form.setFieldValue("startupLink", startupData.startupLink.replace(/^https?:\/\//i, ""));
       form.setFieldValue("founderName", startupData.founderName);
       form.setFieldValue("founderXUsername", startupData.founderXUsername || "");
       form.setFieldValue("tags", startupData.tags?.join(", ") || "");
@@ -161,17 +161,21 @@ export default function AddStartupDialog({ startup: startupData, trigger, open: 
                 return (
                   <Field data-invalid={isInvalid}>
                     <FieldLabel htmlFor={field.name}>Startup link</FieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      type="url"
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      aria-invalid={isInvalid}
-                      placeholder="https://easepop.dev"
-                      required
-                    />
+                    <div className="flex items-stretch w-full">
+                      <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-slate-200 bg-slate-50 text-slate-600 text-sm select-none">https://</span>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        type="text"
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        aria-invalid={isInvalid}
+                        placeholder="easepop.dev"
+                        required
+                        className="rounded-l-none"
+                      />
+                    </div>
                     {isInvalid && <FieldError errors={field.state.meta.errors} />}
                   </Field>
                 );
@@ -216,15 +220,19 @@ export default function AddStartupDialog({ startup: startupData, trigger, open: 
                 return (
                   <Field data-invalid={isInvalid}>
                     <FieldLabel htmlFor={field.name}>Founder X username (optional)</FieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      aria-invalid={isInvalid}
-                      placeholder="kaotechio"
-                    />
+                    <div className="flex items-stretch w-full">
+                      <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-slate-200 bg-slate-50 text-slate-600 text-sm select-none">@</span>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value.replace(/^@+/, ""))}
+                        aria-invalid={isInvalid}
+                        placeholder="kaotechio"
+                        className="rounded-l-none"
+                      />
+                    </div>
                     {isInvalid && <FieldError errors={field.state.meta.errors} />}
                   </Field>
                 );

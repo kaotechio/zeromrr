@@ -33,7 +33,7 @@ export const createStartupAction = actionClient
         startupName: parsedInput.startupName,
         startupLink: parsedInput.startupLink,
         founderName: parsedInput.founderName,
-        founderXUsername: parsedInput.founderXUsername,
+        founderXUsername: parsedInput.founderXUsername.replace("@", ""),
         tags: parsedInput.tags,
       });
       revalidatePath("/profile");
@@ -60,7 +60,7 @@ export const updateStartupAction = actionClient
         startupName: parsedInput.startupName,
         startupLink: parsedInput.startupLink,
         founderName: parsedInput.founderName,
-        founderXUsername: parsedInput.founderXUsername,
+        founderXUsername: parsedInput.founderXUsername.replace("@", ""),
         tags: parsedInput.tags,
       });
       revalidatePath("/profile");

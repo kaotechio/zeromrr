@@ -21,11 +21,7 @@ export default function RootLayout({
         {
           process.env.NODE_ENV === 'production' && (
             <>
-              <script async src="https://plausible.io/js/pa-QFDNm4lYEO8UOL5UVZE4I.js"></script>
-              <script>
-                window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
-                plausible.init()
-              </script>
+              <script defer data-domain="zeromrr.app" src="https://plausible.io/js/script.js"></script>
             </>
           )
         }

@@ -4,6 +4,7 @@ import { SiGithub } from '@icons-pack/react-simple-icons';
 import Icon from "../components/icon";
 import Header from "../components/header";
 import InfoMenu from "../components/info-menu";
+import { Suspense } from "react";
 
 export default function Home() {
   return (
@@ -54,7 +55,9 @@ export default function Home() {
               />
             </div>
 
-            <StartupTable />
+            <Suspense fallback={null}>
+              <StartupTable />
+            </Suspense>
           </div>
         </div>
       </main>
