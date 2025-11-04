@@ -37,10 +37,10 @@ export default function Contact() {
                 <h2 className="mb-3 text-xl font-semibold text-sky-900">Contact Email</h2>
                 <p className="text-slate-700">
                   <a
-                    href="mailto:contact@easepop.dev"
+                    href="mailto:contact@kaotech.io"
                     className="text-sky-700 hover:text-sky-800 underline underline-offset-2"
                   >
-                    contact@easepop.dev
+                    contact@kaotech.io
                   </a>
                 </p>
               </section>

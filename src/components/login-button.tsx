@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/auth-client";
 import { toast } from "sonner";
+import { PlusIcon } from "lucide-react";
 
 export default function LoginButton() {
   const [open, setOpen] = useState(false);
@@ -39,8 +40,9 @@ export default function LoginButton() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button className="px-3 py-1.5 text-sm font-medium text-sky-700 hover:text-sky-800 border border-sky-200 rounded-md hover:bg-sky-50 transition-colors duration-200">
-          Sign in
+        <button className="cursor-pointer inline-flex items-center px-3 py-1.5 text-sm font-medium text-sky-700 hover:text-sky-800 border border-sky-200 rounded-md hover:bg-sky-50 transition-colors duration-200">
+          <PlusIcon className="size-4 mr-2" />
+          Add Your Startup
         </button>
       </DialogTrigger>
       <DialogContent>

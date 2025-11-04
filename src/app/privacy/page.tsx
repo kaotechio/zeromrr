@@ -47,10 +47,10 @@ export default function Privacy() {
                 </p>
                 <p className="text-slate-700 leading-relaxed mb-3">
                   <a
-                    href="mailto:contact@easepop.dev"
+                    href="mailto:contact@kaotech.io"
                     className="text-sky-700 hover:text-sky-800 underline underline-offset-2"
                   >
-                    contact@easepop.dev
+                    contact@kaotech.io
                   </a>
                 </p>
                 <p className="text-slate-700 leading-relaxed">

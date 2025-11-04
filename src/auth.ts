@@ -3,6 +3,7 @@ import { db } from "./db";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import * as schema from "./db/schema";
 import { magicLink } from "better-auth/plugins";
+import { sendMagicLinkEmail } from "./lib/emails";
 
 export const auth = betterAuth({
   appName: "TrustMRR",
@@ -17,9 +18,8 @@ export const auth = betterAuth({
   },
   plugins: [
     magicLink({
-      sendMagicLink: async ({ email, token, url }) => {
-        //TODO:
-        console.log(`Sending magic link to ${email} with token ${token} and url ${url}`);
+      sendMagicLink: async ({ email, url }) => {
+        sendMagicLinkEmail(email, url);
       },
       storeToken: "hashed",
     })
