@@ -4,7 +4,7 @@ import { startup } from "../schema";
 import { getStartupsInputSchema } from "@/lib/schemas";
 import z from "zod";
 
-export async function getStartups({ limit, offset, userId }: z.infer<typeof getStartupsInputSchema>) {
+export async function getStartups({ limit, offset, userId, shuffleSeed }: z.infer<typeof getStartupsInputSchema>) {
   const baseQuery = db.select().from(startup);
   
   const query = userId 
@@ -12,7 +12,7 @@ export async function getStartups({ limit, offset, userId }: z.infer<typeof getS
     : baseQuery;
   
   const rows = await query
-    .orderBy(sql`RANDOM()`)
+    .orderBy(sql`md5(${startup.id} || ${shuffleSeed})`)
     .limit(limit + 1)
     .offset(offset);
 

@@ -57,6 +57,7 @@ export const getStartupsInputSchema = z.object({
   limit: z.number().int().positive(),
   offset: z.number().int().nonnegative(),
   userId: z.string().optional(),
+  shuffleSeed: z.string(),
 });
 
 export const createStartupInputSchema = z.object({

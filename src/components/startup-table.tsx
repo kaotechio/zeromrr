@@ -14,6 +14,9 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { startup } from "../db/schema";
 import { getStartupsAction } from "../action/startups";
+import { cn } from "@/lib/utils";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 function FaviconImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
   const [imgSrc, setImgSrc] = React.useState(src);
@@ -47,6 +50,136 @@ function FaviconImage({ src, alt, className }: { src: string; alt: string; class
   );
 }
 
+function TagsInline({ tags }: { tags: string[] }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const measureRef = useRef<HTMLDivElement | null>(null);
+  const defaultMaxInlineCount = 3;
+  const [maxInlineCount, setMaxInlineCount] = useState<number>(defaultMaxInlineCount);
+  const pillClassName = "inline-flex items-center rounded-full bg-sky-100 text-sky-800 px-2 py-0.5 text-xs font-medium";
+  const ellipsisClassName = "inline-flex items-center text-gray-500 text-xs font-medium cursor-help";
+
+  const pills = useMemo(() => {
+    return tags.map((tag, idx) => ({ key: `${tag}-${idx}`, label: tag }));
+  }, [tags]);
+
+  useLayoutEffect(() => {
+    if (!containerRef.current) return;
+    const container = containerRef.current;
+    const ro = new ResizeObserver(() => {
+      compute();
+    });
+    ro.observe(container);
+    compute();
+    return () => {
+      ro.disconnect();
+    };
+  }, [pills]);
+
+  function measureTagsFit(availableWidth: number, ellipsisWidth: number, includeEllipsis: boolean): number {
+    if (!measureRef.current) return 0;
+    const measure = measureRef.current;
+    measure.innerHTML = "";
+    
+    const gapPx = 6;
+    let used = 0;
+    let count = 0;
+    
+    for (let i = 0; i < pills.length; i++) {
+      const pill = document.createElement("span");
+      pill.className = pillClassName;
+      pill.textContent = pills[i].label;
+      measure.appendChild(pill);
+      const rect = pill.getBoundingClientRect();
+      const pillWidth = Math.ceil(rect.width);
+      const nextUsed = count === 0 ? pillWidth : used + gapPx + pillWidth;
+      const totalNeeded = includeEllipsis ? nextUsed + gapPx + ellipsisWidth : nextUsed;
+      
+      if (totalNeeded <= availableWidth) {
+        used = nextUsed;
+        count++;
+      } else {
+        break;
+      }
+    }
+    
+    return count;
+  }
+
+  function compute() {
+    if (!containerRef.current) return;
+    const containerWidth = containerRef.current.clientWidth;
+    if (containerWidth <= 0) {
+      setMaxInlineCount(defaultMaxInlineCount);
+      return;
+    }
+    if (!measureRef.current) return;
+    
+    // Measure ellipsis width
+    const measure = measureRef.current;
+    measure.innerHTML = "";
+    const ellipsisEl = document.createElement("span");
+    ellipsisEl.className = ellipsisClassName;
+    ellipsisEl.textContent = "...";
+    measure.appendChild(ellipsisEl);
+    const ellipsisWidth = Math.ceil(ellipsisEl.getBoundingClientRect().width);
+    
+    // Check how many tags fit without ellipsis
+    const countWithoutEllipsis = measureTagsFit(containerWidth, ellipsisWidth, false);
+    
+    if (pills.length > countWithoutEllipsis) {
+      // Recalculate accounting for ellipsis
+      const countWithEllipsis = measureTagsFit(containerWidth, ellipsisWidth, true);
+      setMaxInlineCount(Math.max(defaultMaxInlineCount, countWithEllipsis));
+    } else {
+      setMaxInlineCount(pills.length);
+    }
+  }
+
+  if (pills.length === 0) {
+    return <span className="text-gray-400">—</span>;
+  }
+
+  const toRender = pills.slice(0, Math.min(maxInlineCount, pills.length));
+  const hasMore = pills.length > toRender.length;
+  const remainingTags = hasMore ? pills.slice(toRender.length).map(p => p.label) : [];
+
+  return (
+    <div className="flex flex-col">
+      <div ref={containerRef} className="flex flex-wrap items-center gap-1.5">
+        {toRender.map((t) => (
+          <span
+            key={t.key}
+            className={pillClassName}
+          >
+            {t.label}
+          </span>
+        ))}
+        {hasMore && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className={ellipsisClassName}>
+                ...
+              </span>
+            </TooltipTrigger>
+            <TooltipContent 
+              className="bg-sky-50 border border-sky-200 text-sky-800 max-w-xs shadow-md"
+              sideOffset={6}
+            >
+              <p className="font-medium mb-1 text-sky-900">Remaining tags:</p>
+              <p className="text-xs text-sky-700">{remainingTags.join(", ")}</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+      <div
+        ref={measureRef}
+        className="absolute -z-10 opacity-0 pointer-events-none whitespace-nowrap"
+        style={{ left: -99999, top: -99999 }}
+      />
+    </div>
+  );
+}
+
 function FilterBadge({ founderName, onClear }: { founderName: string; onClear: () => void }) {
   return (
     <button
@@ -71,7 +204,7 @@ type StartupQueryData = {
 
 type InfiniteStartupData = {
   pages: StartupQueryData[];
-  pageParams: Array<{ offset: number; limit: number; userId?: string }>;
+  pageParams: Array<{ offset: number; limit: number; userId?: string; shuffleSeed: string }>;
 };
 
 export function StartupTable() {
@@ -82,6 +215,12 @@ export function StartupTable() {
   );
   const [filteredFounderName, setFilteredFounderName] = React.useState<string | undefined>(undefined);
   const previousDataRef = React.useRef<InfiniteStartupData | undefined>(undefined);
+  const shuffleSeed = React.useMemo(() => {
+    console.log("Generating shuffle seed");
+    const seed = crypto.randomUUID();
+    console.log("Shuffle seed:", seed);
+    return seed;
+  }, []);
 
   const {
     data,
@@ -91,9 +230,9 @@ export function StartupTable() {
     refetch,
     isRefetching,
     isLoading,
-  } = useInfiniteQuery<StartupQueryData, Error, InfiniteStartupData, (string | undefined)[], { offset: number; limit: number; userId?: string }>({
-    queryKey: ["startups", filteredUserId],
-    initialPageParam: { offset: 0, limit: 30, userId: filteredUserId },
+  } = useInfiniteQuery<StartupQueryData, Error, InfiniteStartupData, (string | undefined)[], { offset: number; limit: number; userId?: string; shuffleSeed: string }>({
+    queryKey: ["startups", filteredUserId, shuffleSeed!],
+    initialPageParam: { offset: 0, limit: 30, userId: filteredUserId, shuffleSeed: shuffleSeed! },
     queryFn: async ({ pageParam }) => {
       const result = await getStartupsAction(pageParam);
       if (result?.data) {
@@ -105,7 +244,7 @@ export function StartupTable() {
       throw new Error(result?.serverError ?? "Failed to fetch startups");
     },
     getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? { offset: lastPage.nextOffset, limit: 30, userId: filteredUserId } : undefined,
+      lastPage.hasMore ? { offset: lastPage.nextOffset, limit: 30, userId: filteredUserId, shuffleSeed: shuffleSeed! } : undefined,
     placeholderData: (previousData): InfiniteStartupData | undefined => {
       if (previousData) {
         previousDataRef.current = previousData;
@@ -113,6 +252,7 @@ export function StartupTable() {
       }
       return previousDataRef.current;
     },
+    enabled: shuffleSeed !== null,
   });
 
   React.useEffect(() => {
@@ -209,7 +349,7 @@ export function StartupTable() {
                   setFilteredFounderName(s.founderName);
                 }}
                 title={`Filter by ${s.founderName}`}
-                className="font-bold hover:text-sky-700 hover:underline underline-offset-2 cursor-pointer"
+                className="font-bold hover:text-sky-700 hover:underline underline-offset-2 cursor-pointer text-left"
               >
                 {s.founderName}
               </button>
@@ -233,22 +373,7 @@ export function StartupTable() {
         id: "tags",
         cell: ({ row }) => {
           const tags = row.original.tags ?? [];
-          return (
-            <div className="flex flex-wrap items-center gap-1.5">
-              {tags.length === 0 ? (
-                <span className="text-gray-400">—</span>
-              ) : (
-                tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center rounded-full bg-sky-100 text-sky-800 px-2 py-0.5 text-xs font-medium"
-                  >
-                    {tag}
-                  </span>
-                ))
-              )}
-            </div>
-          );
+          return <TagsInline tags={tags} />;
         },
       },
       {
@@ -291,7 +416,7 @@ export function StartupTable() {
               {headerGroup.headers.map((header) => (
                 <th
                   key={header.id}
-                  className="px-4 py-3 text-left font-semibold text-sky-700"
+                  className={cn("px-4 py-3 text-left font-semibold text-sky-700")}
                 >
                   {header.isPlaceholder
                     ? null
@@ -371,5 +496,3 @@ export function StartupTable() {
 }
 
 export default StartupTable;
-
-
