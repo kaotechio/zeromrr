@@ -2,9 +2,9 @@
 
 import { z } from "zod";
 import { actionClient } from "@/lib/safe-action";
-import { createStartupInputSchema, getStartupsInputSchema, updateStartupInputSchema, deleteStartupInputSchema } from "@/lib/schemas";
+import { createStartupInputSchema, getStartupsInputSchema, updateStartupInputSchema, deleteStartupInputSchema, toggleStartupLikeInputSchema } from "@/lib/schemas";
 import { getStartups } from "../db/queries/startup";
-import { createStartup, updateStartup, deleteStartup } from "../db/queries/startup";
+import { createStartup, updateStartup, deleteStartup, toggleStartupLike } from "../db/queries/startup";
 import { headers } from "next/headers";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
@@ -13,7 +13,14 @@ import { randomUUID } from "crypto";
 export const getStartupsAction = actionClient
   .inputSchema(getStartupsInputSchema)
   .action(async ({ parsedInput }: { parsedInput: z.infer<typeof getStartupsInputSchema> }) => {
-    return await getStartups(parsedInput);
+    const hdrs = await headers();
+    const session = await auth.api.getSession({ headers: hdrs });
+    const userId = session?.user?.id;
+    
+    return await getStartups({
+      ...parsedInput,
+      userId,
+    });
   });
 
 export const createStartupAction = actionClient
@@ -81,10 +88,28 @@ export const deleteStartupAction = actionClient
     }
 
     try {
-      const result = await deleteStartup(parsedInput.id, session.user.id);
+      const result = await deleteStartup(parsedInput.startupId, session.user.id);
       revalidatePath("/profile");
       return { success: result !== null };
     } catch (e) {
       throw new Error("Failed to delete startup.");
+    }
+  });
+
+export const toggleStartupLikeAction = actionClient
+  .inputSchema(toggleStartupLikeInputSchema)
+  .action(async ({ parsedInput }: { parsedInput: z.infer<typeof toggleStartupLikeInputSchema> }) => {
+    const hdrs = await headers();
+    const session = await auth.api.getSession({ headers: hdrs });
+
+    if (!session?.user) {
+      throw new Error("Unauthorized");
+    }
+
+    try {
+      const result = await toggleStartupLike(parsedInput.startupId, session.user.id);
+      return result;
+    } catch (e) {
+      throw new Error("Failed to toggle like.");
     }
   });

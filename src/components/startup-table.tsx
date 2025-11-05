@@ -12,19 +12,28 @@ import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { startup } from "../db/schema";
-import { getStartupsAction } from "../action/startups";
+import { getStartupsAction, toggleStartupLikeAction } from "../action/startups";
+import { StartupWithLikes } from "../types";
 import { cn } from "@/lib/utils";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Heart } from "lucide-react";
+import { authClient } from "@/auth-client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import LoginDialog from "./login-dialog";
+
+const failedImageCache = new Set<string>();
 
 function FaviconImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
-  const [imgSrc, setImgSrc] = React.useState(src);
-  const [hasError, setHasError] = React.useState(false);
+  const [hasError, setHasError] = React.useState(() => failedImageCache.has(src));
 
   React.useEffect(() => {
-    setImgSrc(src);
-    setHasError(false);
+    setHasError(failedImageCache.has(src));
+  }, [src]);
+
+  const handleError = React.useCallback(() => {
+    failedImageCache.add(src);
+    setHasError(true);
   }, [src]);
 
   if (hasError) {
@@ -42,10 +51,10 @@ function FaviconImage({ src, alt, className }: { src: string; alt: string; class
     <Image
       width={32}
       height={32}
-      src={imgSrc}
+      src={src}
       alt={alt}
       className={className}
-      onError={() => setHasError(true)}
+      onError={handleError}
     />
   );
 }
@@ -197,30 +206,28 @@ function FilterBadge({ founderName, onClear }: { founderName: string; onClear: (
 }
 
 type StartupQueryData = {
-  items: typeof startup.$inferSelect[];
+  items: StartupWithLikes[];
   nextOffset: number;
   hasMore: boolean;
 };
 
 type InfiniteStartupData = {
   pages: StartupQueryData[];
-  pageParams: Array<{ offset: number; limit: number; userId?: string; shuffleSeed: string }>;
+  pageParams: Array<{ offset: number; limit: number; filterByUserId?: string; shuffleSeed: string }>;
 };
 
 export function StartupTable() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+  const { data: session } = authClient.useSession();
   const [filteredUserId, setFilteredUserId] = React.useState<string | undefined>(
     searchParams.get("userId") || undefined
   );
   const [filteredFounderName, setFilteredFounderName] = React.useState<string | undefined>(undefined);
+  const [loginDialogOpen, setLoginDialogOpen] = React.useState(false);
   const previousDataRef = React.useRef<InfiniteStartupData | undefined>(undefined);
-  const shuffleSeed = React.useMemo(() => {
-    console.log("Generating shuffle seed");
-    const seed = crypto.randomUUID();
-    console.log("Shuffle seed:", seed);
-    return seed;
-  }, []);
+  const shuffleSeed = React.useMemo(() => crypto.randomUUID(), []);
 
   const {
     data,
@@ -230,9 +237,9 @@ export function StartupTable() {
     refetch,
     isRefetching,
     isLoading,
-  } = useInfiniteQuery<StartupQueryData, Error, InfiniteStartupData, (string | undefined)[], { offset: number; limit: number; userId?: string; shuffleSeed: string }>({
+  } = useInfiniteQuery<StartupQueryData, Error, InfiniteStartupData, (string | undefined)[], { offset: number; limit: number; filterByUserId?: string; shuffleSeed: string }>({
     queryKey: ["startups", filteredUserId, shuffleSeed!],
-    initialPageParam: { offset: 0, limit: 30, userId: filteredUserId, shuffleSeed: shuffleSeed! },
+    initialPageParam: { offset: 0, limit: 30, filterByUserId: filteredUserId, shuffleSeed: shuffleSeed! },
     queryFn: async ({ pageParam }) => {
       const result = await getStartupsAction(pageParam);
       if (result?.data) {
@@ -244,7 +251,7 @@ export function StartupTable() {
       throw new Error(result?.serverError ?? "Failed to fetch startups");
     },
     getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? { offset: lastPage.nextOffset, limit: 30, userId: filteredUserId, shuffleSeed: shuffleSeed! } : undefined,
+      lastPage.hasMore ? { offset: lastPage.nextOffset, limit: 30, filterByUserId: filteredUserId, shuffleSeed: shuffleSeed! } : undefined,
     placeholderData: (previousData): InfiniteStartupData | undefined => {
       if (previousData) {
         previousDataRef.current = previousData;
@@ -253,6 +260,22 @@ export function StartupTable() {
       return previousDataRef.current;
     },
     enabled: shuffleSeed !== null,
+  });
+
+  const likeMutation = useMutation({
+    mutationFn: async (startupId: string) => {
+      const result = await toggleStartupLikeAction({ startupId });
+      if (result?.data) {
+        return result.data;
+      }
+      if (result?.validationErrors) {
+        throw new Error("Validation failed");
+      }
+      throw new Error(result?.serverError ?? "Failed to toggle like");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["startups"] });
+    },
   });
 
   React.useEffect(() => {
@@ -298,11 +321,11 @@ export function StartupTable() {
   }, [filteredUserId, router, searchParams]);
 
   const items = React.useMemo(
-    () => (data ? data.pages.flatMap((p) => p.items) : ([] as typeof startup.$inferSelect[])),
+    () => (data ? data.pages.flatMap((p) => p.items) : ([] as StartupWithLikes[])),
     [data],
   );
 
-  const columns: ColumnDef<typeof startup.$inferSelect>[] = React.useMemo(
+  const columns: ColumnDef<StartupWithLikes>[] = React.useMemo(
     () => [
       {
         header: "Startup",
@@ -381,8 +404,46 @@ export function StartupTable() {
         id: "mrr",
         cell: () => <span className="text-gray-600">≥ 0$</span>,
       },
+      {
+        header: () => <Heart className="w-5 h-5 fill-sky-700 text-sky-700" />,
+        id: "likes",
+        cell: ({ row }) => {
+          const isLiked = row.original.userLiked;
+          const isLoggedIn = !!session?.user;
+          const isPending = likeMutation.isPending;
+
+          return (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  if (isLoggedIn && !isPending) {
+                    likeMutation.mutate(row.original.id);
+                  } else if (!isLoggedIn) {
+                    setLoginDialogOpen(true);
+                  }
+                }}
+                disabled={isPending}
+                className={cn(
+                  "flex items-center justify-center transition-colors",
+                  "cursor-pointer hover:opacity-80",
+                  isPending && "opacity-50"
+                )}
+                title={isLoggedIn ? (isLiked ? "Unlike" : "Like") : "Log in to like"}
+              >
+                <Heart
+                  className={cn(
+                    "w-5 h-5",
+                    isLiked ? "fill-red-500 text-red-500" : "text-gray-400"
+                  )}
+                />
+              </button>
+              <span className="text-sm text-gray-600 min-w-[2ch]">{row.original.likesCount}</span>
+            </div>
+          );
+        },
+      },
     ],
-    [filteredFounderName],
+    [filteredFounderName, session, likeMutation, setLoginDialogOpen],
   );
 
   const table = useReactTable({
@@ -491,6 +552,12 @@ export function StartupTable() {
           </Button>
         </div>
       )}
+      <LoginDialog 
+        open={loginDialogOpen} 
+        onOpenChange={setLoginDialogOpen}
+        callbackURL="/"
+        errorCallbackURL="/"
+      />
     </div>
   );
 }

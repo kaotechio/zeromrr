@@ -56,7 +56,7 @@ export const createStartupClientSchema = z.object({
 export const getStartupsInputSchema = z.object({
   limit: z.number().int().positive(),
   offset: z.number().int().nonnegative(),
-  userId: z.string().optional(),
+  filterByUserId: z.string().optional(),
   shuffleSeed: z.string(),
 });
 
@@ -118,5 +118,9 @@ export const updateStartupInputSchema = z.object({
 });
 
 export const deleteStartupInputSchema = z.object({
-  id: z.string().min(1, "Startup ID is required"),
+  startupId: z.string().min(1, "Startup ID is required"),
+});
+
+export const toggleStartupLikeInputSchema = z.object({
+  startupId: z.string().min(1, "Startup ID is required"),
 });

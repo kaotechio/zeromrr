@@ -1,14 +1,32 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../index";
-import { startup } from "../schema";
+import { startup, startupLike } from "../schema";
 import { getStartupsInputSchema } from "@/lib/schemas";
 import z from "zod";
 
-export async function getStartups({ limit, offset, userId, shuffleSeed }: z.infer<typeof getStartupsInputSchema>) {
-  const baseQuery = db.select().from(startup);
+export async function getStartups({ limit, offset, filterByUserId, shuffleSeed, userId }: z.infer<typeof getStartupsInputSchema> & { userId?: string }) {
+  let baseQuery = db
+    .select({
+      id: startup.id,
+      startupName: startup.startupName,
+      startupLink: startup.startupLink,
+      founderXUsername: startup.founderXUsername,
+      founderName: startup.founderName,
+      tags: startup.tags,
+      userId: startup.userId,
+      createdAt: startup.createdAt,
+      updatedAt: startup.updatedAt,
+      likesCount: sql<number>`COUNT(DISTINCT ${startupLike.userId})`,
+      userLiked: userId
+        ? sql<boolean>`CASE WHEN COUNT(CASE WHEN ${startupLike.userId} = ${userId} THEN 1 END) > 0 THEN true ELSE false END`
+        : sql<boolean>`false`,
+    })
+    .from(startup)
+    .leftJoin(startupLike, eq(startup.id, startupLike.startupId))
+    .groupBy(startup.id);
   
-  const query = userId 
-    ? baseQuery.where(eq(startup.userId, userId))
+  const query = filterByUserId 
+    ? baseQuery.where(eq(startup.userId, filterByUserId))
     : baseQuery;
   
   const rows = await query
@@ -76,5 +94,26 @@ export async function deleteStartup(startupId: string, userId: string) {
     .returning();
 
   return rows.length > 0 ? rows[0] : null;
+}
+
+export async function toggleStartupLike(startupId: string, userId: string) {
+  const existingLike = await db
+    .select()
+    .from(startupLike)
+    .where(and(eq(startupLike.startupId, startupId), eq(startupLike.userId, userId)))
+    .limit(1);
+
+  if (existingLike.length > 0) {
+    await db
+      .delete(startupLike)
+      .where(and(eq(startupLike.startupId, startupId), eq(startupLike.userId, userId)));
+    return { liked: false };
+  } else {
+    await db.insert(startupLike).values({
+      startupId,
+      userId,
+    });
+    return { liked: true };
+  }
 }
 

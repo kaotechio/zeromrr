@@ -272,7 +272,7 @@ export default function AddStartupDialog({ startup: startupData, trigger, open: 
                   disabled={status === "executing" || deleteStatus === "executing"}
                   onClick={() => {
                     if (confirm("Are you sure you want to delete this startup? This action cannot be undone.")) {
-                      executeDelete({ id: startupData.id });
+                      executeDelete({ startupId: startupData.id });
                     }
                   }}
                 >
