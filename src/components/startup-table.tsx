@@ -17,7 +17,7 @@ import { StartupWithLikes } from "../types";
 import { cn } from "@/lib/utils";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Heart } from "lucide-react";
+import { Heart, ChevronUp, ChevronDown } from "lucide-react";
 import { authClient } from "@/auth-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import LoginDialog from "./login-dialog";
@@ -213,7 +213,7 @@ type StartupQueryData = {
 
 type InfiniteStartupData = {
   pages: StartupQueryData[];
-  pageParams: Array<{ offset: number; limit: number; filterByUserId?: string; shuffleSeed: string }>;
+  pageParams: Array<{ offset: number; limit: number; filterByUserId?: string; shuffleSeed: string; sortByLikes?: "asc" | "desc" }>;
 };
 
 export function StartupTable() {
@@ -226,6 +226,7 @@ export function StartupTable() {
   );
   const [filteredFounderName, setFilteredFounderName] = React.useState<string | undefined>(undefined);
   const [loginDialogOpen, setLoginDialogOpen] = React.useState(false);
+  const [sortByLikes, setSortByLikes] = React.useState<"asc" | "desc" | undefined>(undefined);
   const previousDataRef = React.useRef<InfiniteStartupData | undefined>(undefined);
   const shuffleSeed = React.useMemo(() => crypto.randomUUID(), []);
 
@@ -237,9 +238,9 @@ export function StartupTable() {
     refetch,
     isRefetching,
     isLoading,
-  } = useInfiniteQuery<StartupQueryData, Error, InfiniteStartupData, (string | undefined)[], { offset: number; limit: number; filterByUserId?: string; shuffleSeed: string }>({
-    queryKey: ["startups", filteredUserId, shuffleSeed!],
-    initialPageParam: { offset: 0, limit: 30, filterByUserId: filteredUserId, shuffleSeed: shuffleSeed! },
+  } = useInfiniteQuery<StartupQueryData, Error, InfiniteStartupData, (string | undefined)[], { offset: number; limit: number; filterByUserId?: string; shuffleSeed: string; sortByLikes?: "asc" | "desc" }>({
+    queryKey: ["startups", filteredUserId, shuffleSeed!, sortByLikes],
+    initialPageParam: { offset: 0, limit: 30, filterByUserId: filteredUserId, shuffleSeed: shuffleSeed!, sortByLikes },
     queryFn: async ({ pageParam }) => {
       const result = await getStartupsAction(pageParam);
       if (result?.data) {
@@ -251,7 +252,7 @@ export function StartupTable() {
       throw new Error(result?.serverError ?? "Failed to fetch startups");
     },
     getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? { offset: lastPage.nextOffset, limit: 30, filterByUserId: filteredUserId, shuffleSeed: shuffleSeed! } : undefined,
+      lastPage.hasMore ? { offset: lastPage.nextOffset, limit: 30, filterByUserId: filteredUserId, shuffleSeed: shuffleSeed!, sortByLikes } : undefined,
     placeholderData: (previousData): InfiniteStartupData | undefined => {
       if (previousData) {
         previousDataRef.current = previousData;
@@ -405,7 +406,33 @@ export function StartupTable() {
         cell: () => <span className="text-gray-600">≥ 0$</span>,
       },
       {
-        header: () => <Heart className="w-5 h-5 fill-sky-700 text-sky-700" />,
+        header: () => (
+          <div className="flex items-center gap-2">
+            <Heart className="w-5 h-5 fill-sky-700 text-sky-700" />
+            <div className="flex flex-col">
+              <button
+                onClick={() => setSortByLikes((prev) => (prev === "asc" ? undefined : "asc"))}
+                className={cn(
+                  "cursor-pointer hover:text-sky-800 transition-colors",
+                  sortByLikes === "asc" ? "text-sky-700" : "text-gray-400"
+                )}
+                title="Sort ascending"
+              >
+                <ChevronUp className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setSortByLikes((prev) => (prev === "desc" ? undefined : "desc"))}
+                className={cn(
+                  "cursor-pointer hover:text-sky-800 transition-colors",
+                  sortByLikes === "desc" ? "text-sky-700" : "text-gray-400"
+                )}
+                title="Sort descending"
+              >
+                <ChevronDown className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ),
         id: "likes",
         cell: ({ row }) => {
           const isLiked = row.original.userLiked;
@@ -443,7 +470,7 @@ export function StartupTable() {
         },
       },
     ],
-    [filteredFounderName, session, likeMutation, setLoginDialogOpen],
+    [filteredFounderName, session, likeMutation, setLoginDialogOpen, sortByLikes],
   );
 
   const table = useReactTable({

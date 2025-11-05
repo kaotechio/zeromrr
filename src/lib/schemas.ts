@@ -58,6 +58,7 @@ export const getStartupsInputSchema = z.object({
   offset: z.number().int().nonnegative(),
   filterByUserId: z.string().optional(),
   shuffleSeed: z.string(),
+  sortByLikes: z.enum(["asc", "desc"]).optional(),
 });
 
 export const createStartupInputSchema = z.object({

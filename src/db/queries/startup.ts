@@ -1,10 +1,10 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql, asc } from "drizzle-orm";
 import { db } from "../index";
 import { startup, startupLike } from "../schema";
 import { getStartupsInputSchema } from "@/lib/schemas";
 import z from "zod";
 
-export async function getStartups({ limit, offset, filterByUserId, shuffleSeed, userId }: z.infer<typeof getStartupsInputSchema> & { userId?: string }) {
+export async function getStartups({ limit, offset, filterByUserId, shuffleSeed, sortByLikes, userId }: z.infer<typeof getStartupsInputSchema> & { userId?: string }) {
   let baseQuery = db
     .select({
       id: startup.id,
@@ -29,8 +29,16 @@ export async function getStartups({ limit, offset, filterByUserId, shuffleSeed, 
     ? baseQuery.where(eq(startup.userId, filterByUserId))
     : baseQuery;
   
-  const rows = await query
-    .orderBy(sql`md5(${startup.id} || ${shuffleSeed})`)
+  let orderedQuery;
+  if (sortByLikes === "asc") {
+    orderedQuery = query.orderBy(asc(sql`COUNT(DISTINCT ${startupLike.userId})`));
+  } else if (sortByLikes === "desc") {
+    orderedQuery = query.orderBy(desc(sql`COUNT(DISTINCT ${startupLike.userId})`));
+  } else {
+    orderedQuery = query.orderBy(sql`md5(${startup.id} || ${shuffleSeed})`);
+  }
+  
+  const rows = await orderedQuery
     .limit(limit + 1)
     .offset(offset);
 
